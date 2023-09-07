@@ -1,20 +1,15 @@
-package models
+package dto
 
-import "gorm.io/gorm"
-
-type PartyArticle struct {
-	gorm.Model
-	Id          int            `gorm:"primaryKey" json:"id"`
-	CreatedDt   string         `json:"createdDt"`
+type PartyArticleCreateDto struct {
 	Poster      string         `json:"poster"`
+	Category    string         `json:"category"`
 	Title       string         `json:"title"`
-	Description string         `json:"description"`
+	Description *string        `json:"description"`
 	TechSkill   []string       `json:"techSkill"`
 	Position    map[string]int `json:"position"`
 	Process     string         `json:"process"`
-	Category    string         `json:"category"`
+	Location    string         `json:"location"`
 	Deadline    string         `json:"deadline"`
 	StartDate   string         `json:"startDate"`
 	Span        string         `json:"span"`
-	Location    *string        `json:"location"`
 }
