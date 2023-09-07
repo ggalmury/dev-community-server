@@ -8,7 +8,7 @@ type PartyArticleCreateDto struct {
 	TechSkill   []string       `json:"techSkill"`
 	Position    map[string]int `json:"position"`
 	Process     string         `json:"process"`
-	Location    string         `json:"location"`
+	Location    *string        `json:"location"`
 	Deadline    string         `json:"deadline"`
 	StartDate   string         `json:"startDate"`
 	Span        string         `json:"span"`

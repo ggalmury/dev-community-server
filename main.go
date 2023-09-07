@@ -11,6 +11,8 @@ import (
 func init() {
 	initializers.LoadEnvVariables()
 	initializers.DBConnection()
+	initializers.SetLogger()
+
 }
 
 func main() {
