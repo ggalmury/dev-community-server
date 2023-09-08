@@ -5,40 +5,47 @@ import (
 	"dev_community_server/initializers"
 	"dev_community_server/models"
 	"dev_community_server/utils"
-	"encoding/json"
 	"github.com/gin-gonic/gin"
-	"net/http"
+	log "github.com/shyunku-libraries/go-logger"
 )
 
 func GetPartyArticle(c *gin.Context) {
+	var entities []models.PartyArticle
 
+	initializers.DB.Find(&entities)
+
+	result := make([]dto.PartyArticleDto, len(entities))
+
+	for idx, entity := range entities {
+		result[idx] = dto.PartyArticleDto{
+			Id:          entity.Id,
+			Poster:      entity.Poster,
+			Title:       entity.Title,
+			Description: entity.Description,
+			TechSkill:   utils.ErrHandledUnmarshal[[]string](c, entity.TechSkill),
+			Position:    utils.ErrHandledUnmarshal[map[string]int](c, entity.Position),
+			Process:     entity.Process,
+			Category:    entity.Category,
+			Deadline:    entity.Deadline,
+			StartDate:   entity.StartDate,
+			Span:        entity.Span,
+			Location:    entity.Location,
+			CreatedAt:   entity.CreatedAt,
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"result": result,
+	})
+
+	log.Info("Article list successfully sent")
 }
 
 func CreatePartyArticle(c *gin.Context) {
 	var body dto.PartyArticleCreateDto
 
 	if err := c.Bind(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	deadline, deadlineErr := utils.StringToTime(body.Deadline)
-	startDate, startDateErr := utils.StringToTime(body.StartDate)
-	position, positionErr := json.Marshal(body.Position)
-	techSkill, techSkillErr := json.Marshal(body.TechSkill)
-
-	if deadlineErr != nil || startDateErr != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"datetime error": deadlineErr.Error()})
-		return
-	}
-
-	if positionErr != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"position error": positionErr.Error()})
-		return
-	}
-
-	if techSkillErr != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"techSkill error": positionErr.Error()})
+		utils.AbortWithStrJson(c, 400, "Cannot bind request body")
 		return
 	}
 
@@ -46,26 +53,26 @@ func CreatePartyArticle(c *gin.Context) {
 		Poster:      body.Poster,
 		Title:       body.Title,
 		Description: body.Description,
-		TechSkill:   techSkill,
-		Position:    position,
+		TechSkill:   utils.ErrHandledMarshal(c, body.TechSkill),
+		Position:    utils.ErrHandledMarshal(c, body.Position),
 		Process:     body.Process,
 		Category:    body.Category,
-		Deadline:    *deadline,
-		StartDate:   *startDate,
+		Deadline:    utils.StringToTime(c, body.Deadline),
+		StartDate:   utils.StringToTime(c, body.StartDate),
 		Span:        body.Span,
 		Location:    body.Location,
 	}
 
 	result := initializers.DB.Create(&partyArticle)
+
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"Cannot create article": result.Error})
+		utils.AbortWithStrJson(c, 500, "Cannot create article")
 		return
+
 	}
 
 	//c.Status(200)
-	c.JSON(200, gin.H{
-		"success": true,
-	})
+	c.JSON(200, gin.H{})
 }
 
 func UsePartyRouter(g *gin.Engine) {

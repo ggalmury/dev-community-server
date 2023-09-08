@@ -7,7 +7,7 @@ import (
 
 type PartyArticle struct {
 	gorm.Model
-	Id          int       `json:"id" gorm:"primaryKey" `
+	Id          int       `json:"id" gorm:"primaryKey"`
 	Poster      string    `json:"poster" gorm:"type:varchar(10)"`
 	Title       string    `json:"title" gorm:"type:varchar(40)"`
 	Description *string   `json:"description" gorm:"type:longText"`
@@ -19,9 +19,4 @@ type PartyArticle struct {
 	StartDate   time.Time `json:"startDate"`
 	Span        string    `json:"span" gorm:"type:varchar(6)"`
 	Location    *string   `json:"location" gorm:"type:varchar(7)"`
-}
-
-type TechSkills struct {
-	PartyArticleId int
-	Name           string
 }
