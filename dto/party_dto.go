@@ -1,9 +1,13 @@
 package dto
 
-import "time"
+import (
+	"dev_community_server/models"
+	"dev_community_server/utils"
+	"github.com/gin-gonic/gin"
+	"time"
+)
 
 type PartyArticleDto struct {
-	Id          int            `json:"id"`
 	Poster      string         `json:"poster"`
 	Title       string         `json:"title"`
 	Description *string        `json:"description"`
@@ -16,6 +20,23 @@ type PartyArticleDto struct {
 	Span        string         `json:"span"`
 	Location    *string        `json:"location"`
 	CreatedAt   time.Time      `json:"createdAt"`
+}
+
+func PartyArticleDtoFromEntity(c *gin.Context, entity models.PartyArticleEntity) *PartyArticleDto {
+	return &PartyArticleDto{
+		Poster:      entity.Poster,
+		Title:       entity.Title,
+		Description: entity.Description,
+		TechSkill:   utils.ErrHandledUnmarshal[[]string](c, entity.TechSkill),
+		Position:    utils.ErrHandledUnmarshal[map[string]int](c, entity.Position),
+		Process:     entity.Process,
+		Category:    entity.Category,
+		Deadline:    entity.Deadline,
+		StartDate:   entity.StartDate,
+		Span:        entity.Span,
+		Location:    entity.Location,
+		CreatedAt:   entity.CreatedAt,
+	}
 }
 
 type PartyArticleCreateDto struct {

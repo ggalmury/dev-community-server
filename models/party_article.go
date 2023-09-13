@@ -5,18 +5,21 @@ import (
 	"time"
 )
 
-type PartyArticle struct {
+type PartyArticleEntity struct {
 	gorm.Model
-	Id          int       `json:"id" gorm:"primaryKey"`
-	Poster      string    `json:"poster" gorm:"type:varchar(10)"`
-	Title       string    `json:"title" gorm:"type:varchar(40)"`
-	Description *string   `json:"description" gorm:"type:longText"`
-	TechSkill   []byte    `json:"techSkill" gorm:"type:json"`
-	Position    []byte    `json:"position" gorm:"type:json"`
-	Process     string    `json:"process" gorm:"type:varchar(6)"`
-	Category    string    `json:"category" gorm:"type:varchar(4)"`
-	Deadline    time.Time `json:"deadline"`
-	StartDate   time.Time `json:"startDate"`
-	Span        string    `json:"span" gorm:"type:varchar(6)"`
-	Location    *string   `json:"location" gorm:"type:varchar(7)"`
+	Poster      string  `gorm:"type:varchar(10)"`
+	Title       string  `gorm:"type:varchar(40)"`
+	Description *string `gorm:"type:longText"`
+	TechSkill   []byte  `gorm:"type:json"`
+	Position    []byte  `gorm:"type:json"`
+	Process     string  `gorm:"type:varchar(6)"`
+	Category    string  `gorm:"type:varchar(4)"`
+	Deadline    time.Time
+	StartDate   time.Time
+	Span        string  `gorm:"type:varchar(6)"`
+	Location    *string `gorm:"type:varchar(7)"`
+}
+
+func (PartyArticleEntity) TableName() string {
+	return "party_article"
 }

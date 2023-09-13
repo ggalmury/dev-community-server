@@ -11,5 +11,5 @@ func init() {
 }
 
 func main() {
-	initializers.DB.AutoMigrate(&models.PartyArticle{})
+	initializers.DB.AutoMigrate(&models.PartyArticleEntity{}, &models.UserEntity{})
 }

@@ -10,28 +10,14 @@ import (
 )
 
 func GetPartyArticle(c *gin.Context) {
-	var entities []models.PartyArticle
+	var entities []models.PartyArticleEntity
 
 	initializers.DB.Find(&entities)
 
 	result := make([]dto.PartyArticleDto, len(entities))
 
 	for idx, entity := range entities {
-		result[idx] = dto.PartyArticleDto{
-			Id:          entity.Id,
-			Poster:      entity.Poster,
-			Title:       entity.Title,
-			Description: entity.Description,
-			TechSkill:   utils.ErrHandledUnmarshal[[]string](c, entity.TechSkill),
-			Position:    utils.ErrHandledUnmarshal[map[string]int](c, entity.Position),
-			Process:     entity.Process,
-			Category:    entity.Category,
-			Deadline:    entity.Deadline,
-			StartDate:   entity.StartDate,
-			Span:        entity.Span,
-			Location:    entity.Location,
-			CreatedAt:   entity.CreatedAt,
-		}
+		result[idx] = *dto.PartyArticleDtoFromEntity(c, entity)
 	}
 
 	c.JSON(200, gin.H{
@@ -49,7 +35,7 @@ func CreatePartyArticle(c *gin.Context) {
 		return
 	}
 
-	partyArticle := models.PartyArticle{
+	partyArticle := models.PartyArticleEntity{
 		Poster:      body.Poster,
 		Title:       body.Title,
 		Description: body.Description,
@@ -68,11 +54,12 @@ func CreatePartyArticle(c *gin.Context) {
 	if result.Error != nil {
 		utils.AbortWithStrJson(c, 500, "Cannot create article")
 		return
-
 	}
 
 	//c.Status(200)
-	c.JSON(200, gin.H{})
+	c.JSON(201, gin.H{})
+
+	log.Info("Article successfully created")
 }
 
 func UsePartyRouter(g *gin.Engine) {
