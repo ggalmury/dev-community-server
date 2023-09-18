@@ -5,24 +5,33 @@ import (
 	"dev_community_server/initializers"
 	"dev_community_server/models"
 	"dev_community_server/utils"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	log "github.com/shyunku-libraries/go-logger"
+	"net/http"
 )
 
 func GetPartyArticle(c *gin.Context) {
 	var entities []models.PartyArticleEntity
 
-	initializers.DB.Find(&entities)
+	if err := initializers.DB.Find(&entities).Error; err != nil {
+		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Cannot found party articles")
+		return
+	}
 
 	result := make([]dto.PartyArticleDto, len(entities))
 
 	for idx, entity := range entities {
-		result[idx] = *dto.PartyArticleDtoFromEntity(c, entity)
+		pad, err := dto.NewPartyArticleDto(entity)
+		if err != nil {
+			utils.AbortWithStrJson(c, http.StatusInternalServerError, "Error occurred while binding party article entity to dto")
+			return
+		}
+
+		result[idx] = *pad
 	}
 
-	c.JSON(200, gin.H{
-		"result": result,
-	})
+	c.JSON(http.StatusOK, result)
 
 	log.Info("Article list successfully sent")
 }
@@ -31,7 +40,14 @@ func CreatePartyArticle(c *gin.Context) {
 	var body dto.PartyArticleCreateDto
 
 	if err := c.Bind(&body); err != nil {
-		utils.AbortWithStrJson(c, 400, "Cannot bind request body")
+		utils.AbortWithStrJson(c, http.StatusBadRequest, "Cannot bind request body")
+		return
+	}
+
+	techSkill, tsErr := json.Marshal(body.TechSkill)
+	position, posErr := json.Marshal(body.Position)
+	if tsErr != nil || posErr != nil {
+		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Failed to marshal article properties")
 		return
 	}
 
@@ -39,8 +55,8 @@ func CreatePartyArticle(c *gin.Context) {
 		Poster:      body.Poster,
 		Title:       body.Title,
 		Description: body.Description,
-		TechSkill:   utils.ErrHandledMarshal(c, body.TechSkill),
-		Position:    utils.ErrHandledMarshal(c, body.Position),
+		TechSkill:   techSkill,
+		Position:    position,
 		Process:     body.Process,
 		Category:    body.Category,
 		Deadline:    utils.StringToTime(c, body.Deadline),
@@ -52,12 +68,11 @@ func CreatePartyArticle(c *gin.Context) {
 	result := initializers.DB.Create(&partyArticle)
 
 	if result.Error != nil {
-		utils.AbortWithStrJson(c, 500, "Cannot create article")
+		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Cannot create article")
 		return
 	}
 
-	//c.Status(200)
-	c.JSON(201, gin.H{})
+	c.JSON(http.StatusCreated, gin.H{})
 
 	log.Info("Article successfully created")
 }

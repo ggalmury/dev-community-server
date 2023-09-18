@@ -2,7 +2,9 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"strings"
 	"time"
 )
 
@@ -36,26 +38,15 @@ func StringToTime(c *gin.Context, t string) time.Time {
 	return nt
 }
 
-func ErrHandledMarshal(c *gin.Context, i interface{}) []byte {
-	v, e := json.Marshal(i)
-
-	if e != nil {
-		AbortWithStrJson(c, 500, "Marshal Error")
+func GetBearerToken(h *string) (*string, error) {
+	parts := strings.SplitN(*h, " ", 2)
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		return nil, fmt.Errorf("unauthorized")
 	}
 
-	return v
-}
+	token := parts[1]
 
-func ErrHandledUnmarshal[T any](c *gin.Context, b []byte) T {
-	var v T
-
-	e := json.Unmarshal(b, &v)
-
-	if e != nil {
-		AbortWithStrJson(c, 500, "Marshal Error")
-	}
-
-	return v
+	return &token, nil
 }
 
 func InterfaceToStruct(src interface{}, dst interface{}) error {

@@ -16,6 +16,6 @@ type UserEntity struct {
 	KakaoThumbnailImgUrl *string
 }
 
-func (PartyArticleEntity) UserEntity() string {
+func (UserEntity) TableName() string {
 	return "user"
 }

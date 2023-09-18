@@ -2,8 +2,7 @@ package dto
 
 import (
 	"dev_community_server/models"
-	"dev_community_server/utils"
-	"github.com/gin-gonic/gin"
+	"encoding/json"
 	"time"
 )
 
@@ -22,13 +21,25 @@ type PartyArticleDto struct {
 	CreatedAt   time.Time      `json:"createdAt"`
 }
 
-func PartyArticleDtoFromEntity(c *gin.Context, entity models.PartyArticleEntity) *PartyArticleDto {
+func NewPartyArticleDto(entity models.PartyArticleEntity) (*PartyArticleDto, error) {
+	var (
+		techSkill []string
+		position  map[string]int
+	)
+
+	tsErr := json.Unmarshal(entity.TechSkill, &techSkill)
+	posErr := json.Unmarshal(entity.Position, &position)
+
+	if tsErr != nil || posErr != nil {
+		return nil, tsErr
+	}
+
 	return &PartyArticleDto{
 		Poster:      entity.Poster,
 		Title:       entity.Title,
 		Description: entity.Description,
-		TechSkill:   utils.ErrHandledUnmarshal[[]string](c, entity.TechSkill),
-		Position:    utils.ErrHandledUnmarshal[map[string]int](c, entity.Position),
+		TechSkill:   techSkill,
+		Position:    position,
 		Process:     entity.Process,
 		Category:    entity.Category,
 		Deadline:    entity.Deadline,
@@ -36,7 +47,7 @@ func PartyArticleDtoFromEntity(c *gin.Context, entity models.PartyArticleEntity)
 		Span:        entity.Span,
 		Location:    entity.Location,
 		CreatedAt:   entity.CreatedAt,
-	}
+	}, nil
 }
 
 type PartyArticleCreateDto struct {

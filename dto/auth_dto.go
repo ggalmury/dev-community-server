@@ -6,7 +6,7 @@ import (
 )
 
 type KakaoLoginDto struct {
-	AccessToken string `json:"accessToken"`
+	AccessToken string `json:"accessToken" bind:"required"`
 }
 
 type UserDto struct {
@@ -20,9 +20,10 @@ type UserDto struct {
 	KakaoProfileImgUrl   *string   `json:"kakaoProfileImgUrl"`
 	KakaoThumbnailImgUrl *string   `json:"kakaoThumbnailImgUrl"`
 	CreatedAt            time.Time `json:"createdAt"`
+	Token                TokenDto  `json:"token"`
 }
 
-func UserDtoFromEntity(entity models.UserEntity) *UserDto {
+func NewUserDto(entity models.UserEntity, token TokenDto) *UserDto {
 	return &UserDto{
 		Uuid:                 entity.Uuid,
 		Email:                entity.Email,
@@ -34,6 +35,7 @@ func UserDtoFromEntity(entity models.UserEntity) *UserDto {
 		KakaoProfileImgUrl:   entity.KakaoProfileImgUrl,
 		KakaoThumbnailImgUrl: entity.KakaoThumbnailImgUrl,
 		CreatedAt:            entity.CreatedAt,
+		Token:                token,
 	}
 }
 
@@ -52,4 +54,20 @@ type KakaoProperties struct {
 
 type KakaoAccount struct {
 	Email string `json:"email"`
+}
+
+type TokenDto struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}
+
+type AccessTokenClaims struct {
+	Uuid      string    `json:"uuid"`
+	CreatedAt time.Time `json:"createdAT"`
+}
+
+type RefreshTokenClaims struct {
+	Id        uint      `json:"id"`
+	Uuid      string    `json:"uuid"`
+	CreatedAt time.Time `json:"createdAT"`
 }
