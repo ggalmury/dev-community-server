@@ -41,7 +41,7 @@ func StringToTime(c *gin.Context, t string) time.Time {
 func GetBearerToken(h *string) (*string, error) {
 	parts := strings.SplitN(*h, " ", 2)
 	if len(parts) != 2 || parts[0] != "Bearer" {
-		return nil, fmt.Errorf("unauthorized")
+		return nil, fmt.Errorf("incorrect authorize token")
 	}
 
 	token := parts[1]

@@ -2,6 +2,7 @@ package dto
 
 import (
 	"dev_community_server/models"
+	"github.com/golang-jwt/jwt/v5"
 	"time"
 )
 
@@ -20,6 +21,7 @@ type UserDto struct {
 	KakaoProfileImgUrl   *string   `json:"kakaoProfileImgUrl"`
 	KakaoThumbnailImgUrl *string   `json:"kakaoThumbnailImgUrl"`
 	CreatedAt            time.Time `json:"createdAt"`
+	Platform             string    `json:"platform"`
 	Token                TokenDto  `json:"token"`
 }
 
@@ -35,6 +37,7 @@ func NewUserDto(entity models.UserEntity, token TokenDto) *UserDto {
 		KakaoProfileImgUrl:   entity.KakaoProfileImgUrl,
 		KakaoThumbnailImgUrl: entity.KakaoThumbnailImgUrl,
 		CreatedAt:            entity.CreatedAt,
+		Platform:             entity.Platform,
 		Token:                token,
 	}
 }
@@ -64,10 +67,12 @@ type TokenDto struct {
 type AccessTokenClaims struct {
 	Uuid      string    `json:"uuid"`
 	CreatedAt time.Time `json:"createdAT"`
+	jwt.RegisteredClaims
 }
 
 type RefreshTokenClaims struct {
 	Id        uint      `json:"id"`
 	Uuid      string    `json:"uuid"`
 	CreatedAt time.Time `json:"createdAT"`
+	jwt.RegisteredClaims
 }

@@ -14,6 +14,7 @@ type UserEntity struct {
 	KakaoNickname        *string
 	KakaoProfileImgUrl   *string
 	KakaoThumbnailImgUrl *string
+	Platform             string
 }
 
 func (UserEntity) TableName() string {
