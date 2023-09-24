@@ -7,9 +7,11 @@ import (
 	"dev_community_server/models"
 	"dev_community_server/utils"
 	"encoding/json"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	log "github.com/shyunku-libraries/go-logger"
+	"gorm.io/gorm"
 	"io"
 	"net/http"
 )
@@ -26,9 +28,6 @@ func KakaoLogin(c *gin.Context) {
 		utils.AbortWithStrJson(c, http.StatusUnauthorized, "Incorrect Kakao auth token")
 		return
 	}
-
-	// access token -> header/authorization: "bearer ..."
-	// refresh token -> header/X-Refresh-Token: ""
 
 	// Request Kakao user data using Kakao auth token
 	req, err := http.NewRequest("GET", kakaoAPIURL, nil)
@@ -67,7 +66,7 @@ func KakaoLogin(c *gin.Context) {
 		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Failed to unmarshal Kakao user data response")
 		return
 	}
-	properties := kakaoResp.Properties
+	props := kakaoResp.Properties
 
 	tx := initializers.DB.Begin()
 	if tx.Error != nil {
@@ -78,63 +77,53 @@ func KakaoLogin(c *gin.Context) {
 
 	// Kakao user not exists in database
 	if err = tx.Where("kakao_id = ?", kakaoResp.ID).First(&user).Error; err != nil {
-		createdUser := models.UserEntity{
-			Uuid:                 uuid.New().String(),
-			Email:                &kakaoResp.KakaoAccount.Email,
-			Password:             nil,
-			Nickname:             &properties.Nickname,
-			ProfileImgUrl:        &properties.ProfileImage,
-			KakaoId:              &kakaoResp.ID,
-			KakaoEmail:           &kakaoResp.KakaoAccount.Email,
-			KakaoNickname:        &properties.Nickname,
-			KakaoProfileImgUrl:   &properties.ProfileImage,
-			KakaoThumbnailImgUrl: &properties.ThumbnailImage,
-			Platform:             utils.Kakao,
-		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			*user = models.UserEntity{
+				Uuid:                 uuid.New().String(),
+				Email:                &kakaoResp.KakaoAccount.Email,
+				Password:             nil,
+				Nickname:             &props.Nickname,
+				ProfileImgUrl:        &props.ProfileImage,
+				KakaoId:              &kakaoResp.ID,
+				KakaoEmail:           &kakaoResp.KakaoAccount.Email,
+				KakaoNickname:        &props.Nickname,
+				KakaoProfileImgUrl:   &props.ProfileImage,
+				KakaoThumbnailImgUrl: &props.ThumbnailImage,
+				Platform:             utils.Kakao,
+			}
 
-		if err = tx.Create(&createdUser).Error; err != nil {
+			if err = tx.Create(&user).Error; err != nil {
+				log.Error(err)
+				tx.Rollback()
+				utils.AbortWithStrJson(c, http.StatusInternalServerError, "Cannot save Kakao user account")
+				return
+			}
+
+			log.Info("New Kakao user created:", user.Uuid)
+		} else {
 			log.Error(err)
 			tx.Rollback()
-			utils.AbortWithStrJson(c, http.StatusInternalServerError, "Cannot save Kakao user account")
+			utils.AbortWithStrJson(c, http.StatusInternalServerError, "Error occurred in find user")
 			return
 		}
-
-		tokenDto, tokenDtoErr := crypto.GenerateTokens(&createdUser)
-		if tokenDtoErr != nil {
-			log.Error(tokenDtoErr)
-			tx.Rollback()
-			utils.AbortWithStrJson(c, http.StatusInternalServerError, "Error occurred in generating tokens")
-			return
-		}
-
-		if saveTokenErr := crypto.SaveTokens(createdUser.Uuid, tokenDto.RefreshToken); saveTokenErr != nil {
-			log.Error(saveTokenErr)
-			tx.Rollback()
-			utils.AbortWithStrJson(c, http.StatusInternalServerError, "Cannot save user auth token")
-			return
-		}
-
-		userDto = dto.NewUserDto(createdUser, *tokenDto)
-
-		log.Info("New Kakao user created:", userDto.Uuid)
-	} else { // Kakao user already exists in database
-		tokenDto, tokenDtoErr := crypto.GenerateTokens(user)
-		if tokenDtoErr != nil {
-			log.Error(tokenDtoErr)
-			tx.Rollback()
-			utils.AbortWithStrJson(c, http.StatusInternalServerError, "Error occurred in generating tokens")
-			return
-		}
-
-		if saveTokenErr := crypto.SaveTokens(user.Uuid, tokenDto.RefreshToken); saveTokenErr != nil {
-			log.Error(saveTokenErr)
-			tx.Rollback()
-			utils.AbortWithStrJson(c, http.StatusInternalServerError, "Cannot save user auth token")
-			return
-		}
-
-		userDto = dto.NewUserDto(*user, *tokenDto)
 	}
+
+	tokenDto, tokenDtoErr := crypto.GenerateTokens(user)
+	if tokenDtoErr != nil {
+		log.Error(tokenDtoErr)
+		tx.Rollback()
+		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Error occurred in generating tokens")
+		return
+	}
+
+	if saveTokenErr := crypto.SaveTokens(user.Uuid, tokenDto.RefreshToken); saveTokenErr != nil {
+		log.Error(saveTokenErr)
+		tx.Rollback()
+		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Cannot save user auth token")
+		return
+	}
+
+	userDto = dto.NewUserDto(*user, *tokenDto)
 
 	if err = tx.Commit().Error; err != nil {
 		log.Error(err)
@@ -186,7 +175,23 @@ func AutoLogin(c *gin.Context) {
 
 	userDto := dto.NewUserDto(*user, *tokenDto)
 	c.JSON(201, userDto)
+}
 
+func Logout(c *gin.Context) {
+	var body dto.LogoutDto
+	if bindErr := c.Bind(&body); bindErr != nil {
+		utils.AbortWithStrJson(c, http.StatusBadRequest, "Cannot bind request body")
+		return
+	}
+
+	if err := crypto.DeleteTokens(body.Uuid); err != nil {
+		log.Error(err)
+		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Cannot delete user auth token")
+		return
+	}
+
+	log.Info("Kakao user logged out:", body.Uuid)
+	c.JSON(201, gin.H{})
 }
 
 func UseAuthRouter(g *gin.Engine) {
@@ -194,4 +199,5 @@ func UseAuthRouter(g *gin.Engine) {
 
 	sg.POST("/kakao", KakaoLogin)
 	sg.POST("/auto-login", AutoLogin)
+	sg.POST("/logout", Logout)
 }

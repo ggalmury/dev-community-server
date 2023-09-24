@@ -16,7 +16,16 @@ func SaveTokens(uuid string, token string) error {
 		return err
 	}
 
-	log.Infof("Token saved in in-memory DB: [key]: %v, [value]: %v", uuid, token)
+	log.Infof("Token saved in in-memory DB: [key]: %v", uuid)
+	return nil
+}
+
+func DeleteTokens(uuid string) error {
+	if err := initializers.InMemoryDB.Del(uuid); err != nil {
+		return err
+	}
+
+	log.Infof("Token deleted in in-memory DB: [key]: %v", uuid)
 	return nil
 }
 
@@ -67,7 +76,7 @@ func ValidateAccessToken(at string) (*dto.AccessTokenClaims, error) {
 	claim := &dto.AccessTokenClaims{}
 
 	_, err := jwt.ParseWithClaims(at, claim, func(token *jwt.Token) (interface{}, error) {
-		return os.Getenv("JWT_ACCESS_SECRET"), nil
+		return []byte(os.Getenv("JWT_ACCESS_SECRET")), nil
 	})
 	if err != nil {
 		return nil, err
@@ -79,7 +88,7 @@ func ValidateRefreshToken(rt string) (*dto.RefreshTokenClaims, error) {
 	claim := &dto.RefreshTokenClaims{}
 
 	_, err := jwt.ParseWithClaims(rt, claim, func(token *jwt.Token) (interface{}, error) {
-		return os.Getenv("JWT_REFRESH_SECRET"), nil
+		return []byte(os.Getenv("JWT_REFRESH_SECRET")), nil
 	})
 	if err != nil {
 		return nil, err

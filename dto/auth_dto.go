@@ -10,6 +10,10 @@ type KakaoLoginDto struct {
 	AccessToken string `json:"accessToken" bind:"required"`
 }
 
+type LogoutDto struct {
+	Uuid string `json:"uuid" bind:"required"`
+}
+
 type UserDto struct {
 	Uuid                 string    `json:"uuid"`
 	Email                *string   `json:"email"`

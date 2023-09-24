@@ -2,7 +2,7 @@ package utils
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"strings"
 	"time"
@@ -41,7 +41,7 @@ func StringToTime(c *gin.Context, t string) time.Time {
 func GetBearerToken(h *string) (*string, error) {
 	parts := strings.SplitN(*h, " ", 2)
 	if len(parts) != 2 || parts[0] != "Bearer" {
-		return nil, fmt.Errorf("incorrect authorize token")
+		return nil, errors.New("incorrect bearer token type")
 	}
 
 	token := parts[1]
