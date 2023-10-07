@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"strings"
@@ -28,18 +27,18 @@ func SJ(str string) gin.H {
 	}
 }
 
-func StringToTime(c *gin.Context, t string) time.Time {
-	nt, e := time.Parse(time.RFC3339, t)
+func StringToTime(t string) (*time.Time, error) {
+	nt, err := time.Parse(time.RFC3339, t)
 
-	if e != nil {
-		AbortWithStrJson(c, 500, "Time typecasting Error")
+	if err != nil {
+		return nil, err
 	}
 
-	return nt
+	return &nt, nil
 }
 
-func GetBearerToken(h *string) (*string, error) {
-	parts := strings.SplitN(*h, " ", 2)
+func GetBearerToken(h string) (*string, error) {
+	parts := strings.SplitN(h, " ", 2)
 	if len(parts) != 2 || parts[0] != "Bearer" {
 		return nil, errors.New("incorrect bearer token type")
 	}
@@ -47,15 +46,4 @@ func GetBearerToken(h *string) (*string, error) {
 	token := parts[1]
 
 	return &token, nil
-}
-
-func InterfaceToStruct(src interface{}, dst interface{}) error {
-	jsonData, err := json.Marshal(src)
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(jsonData, &dst); err != nil {
-		return err
-	}
-	return nil
 }

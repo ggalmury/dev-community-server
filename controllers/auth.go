@@ -22,10 +22,10 @@ const (
 
 func KakaoLogin(c *gin.Context) {
 	authHeader := c.Request.Header.Get("Authorization")
-	kakaoAccessToken, err := utils.GetBearerToken(&authHeader)
+	kakaoAccessToken, err := utils.GetBearerToken(authHeader)
 	if err != nil {
 		log.Error(err)
-		utils.AbortWithStrJson(c, http.StatusUnauthorized, "Incorrect Kakao auth token")
+		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
@@ -33,7 +33,7 @@ func KakaoLogin(c *gin.Context) {
 	req, err := http.NewRequest("GET", kakaoAPIURL, nil)
 	if err != nil {
 		log.Error(err)
-		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Failed to create Kakao request")
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
@@ -43,15 +43,15 @@ func KakaoLogin(c *gin.Context) {
 	res, err := client.Do(req)
 	if err != nil {
 		log.Error(err)
-		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Failed to request Kakao account")
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 	defer res.Body.Close()
 
-	responseBody, err := io.ReadAll(res.Body)
+	respBody, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Error(err)
-		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Failed to read Kakao account")
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
@@ -61,9 +61,9 @@ func KakaoLogin(c *gin.Context) {
 		kakaoResp dto.KakaoResponse
 	)
 
-	if err = json.Unmarshal(responseBody, &kakaoResp); err != nil {
+	if err = json.Unmarshal(respBody, &kakaoResp); err != nil {
 		log.Error(err)
-		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Failed to unmarshal Kakao user data response")
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 	props := kakaoResp.Properties
@@ -71,7 +71,7 @@ func KakaoLogin(c *gin.Context) {
 	tx := initializers.DB.Begin()
 	if tx.Error != nil {
 		log.Error(tx.Error)
-		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Transaction error")
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
@@ -95,7 +95,7 @@ func KakaoLogin(c *gin.Context) {
 			if err = tx.Create(&user).Error; err != nil {
 				log.Error(err)
 				tx.Rollback()
-				utils.AbortWithStrJson(c, http.StatusInternalServerError, "Cannot save Kakao user account")
+				c.AbortWithStatus(http.StatusInternalServerError)
 				return
 			}
 
@@ -103,23 +103,23 @@ func KakaoLogin(c *gin.Context) {
 		} else {
 			log.Error(err)
 			tx.Rollback()
-			utils.AbortWithStrJson(c, http.StatusInternalServerError, "Error occurred in find user")
+			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 	}
 
-	tokenDto, tokenDtoErr := crypto.GenerateTokens(user)
-	if tokenDtoErr != nil {
-		log.Error(tokenDtoErr)
+	tokenDto, err := crypto.GenerateTokens(user)
+	if err != nil {
+		log.Error(err)
 		tx.Rollback()
-		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Error occurred in generating tokens")
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	if saveTokenErr := crypto.SaveTokens(user.Uuid, tokenDto.RefreshToken); saveTokenErr != nil {
-		log.Error(saveTokenErr)
+	if err = crypto.SaveTokens(user.Uuid, tokenDto.RefreshToken); err != nil {
+		log.Error(err)
 		tx.Rollback()
-		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Cannot save user auth token")
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
@@ -128,21 +128,21 @@ func KakaoLogin(c *gin.Context) {
 	if err = tx.Commit().Error; err != nil {
 		log.Error(err)
 		tx.Rollback()
-		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Error occurred in transaction")
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	log.Info("Kakao user logged in:", userDto.Uuid)
 	c.JSON(201, userDto)
+	log.Info("Kakao user logged in / [uuid]:", userDto.Uuid)
 }
 
 func AutoLogin(c *gin.Context) {
 	authHeader := c.Request.Header.Get("Authorization")
 	refreshToken := c.Request.Header.Get("X-Refresh-Token")
-	accessToken, err := utils.GetBearerToken(&authHeader)
+	accessToken, err := utils.GetBearerToken(authHeader)
 	if err != nil {
 		log.Error(err)
-		utils.AbortWithStrJson(c, http.StatusUnauthorized, "Incorrect access token format")
+		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
@@ -150,48 +150,64 @@ func AutoLogin(c *gin.Context) {
 
 	atClaims, atErr := crypto.ValidateAccessToken(*accessToken)
 	rtClaims, rtErr := crypto.ValidateRefreshToken(refreshToken)
+	if atClaims.Uuid != rtClaims.Uuid {
+		log.Errorf("Payload mismatch / [access payload]: $s [refresh payload]: $s", atClaims.Uuid, rtClaims.Uuid)
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
 	if atErr == nil {
 		initializers.DB.Where("uuid = ?", atClaims.Uuid).First(&user)
+		log.Info("Valid access token / [uuid]:", atClaims.Uuid)
 	} else if atErr != nil && rtErr == nil {
 		initializers.DB.Where("uuid = ?", rtClaims.Uuid).First(&user)
+		log.Info("Valid refresh token / [uuid]:", rtClaims.Uuid)
 	} else {
+		if err = crypto.DeleteTokens(rtClaims.Uuid); err != nil {
+			log.Error(err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
 		log.Error(atErr, rtErr)
-		utils.AbortWithStrJson(c, http.StatusUnauthorized, "Invalid tokens")
+		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
-	tokenDto, tokenDtoErr := crypto.GenerateTokens(user)
-	if tokenDtoErr != nil {
-		log.Error(tokenDtoErr)
-		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Error occurred in generating tokens")
+	tokenDto, err := crypto.GenerateTokens(user)
+	if err != nil {
+		log.Error(err)
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	if saveTokenErr := crypto.SaveTokens(user.Uuid, tokenDto.RefreshToken); saveTokenErr != nil {
-		log.Error(saveTokenErr)
-		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Cannot save user auth token")
+	if err = crypto.SaveTokens(user.Uuid, tokenDto.RefreshToken); err != nil {
+		log.Error(err)
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
 	userDto := dto.NewUserDto(*user, *tokenDto)
+
 	c.JSON(201, userDto)
+	log.Info("User auto logged in / [uuid]:", userDto.Uuid)
 }
 
 func Logout(c *gin.Context) {
 	var body dto.LogoutDto
-	if bindErr := c.Bind(&body); bindErr != nil {
-		utils.AbortWithStrJson(c, http.StatusBadRequest, "Cannot bind request body")
+	if err := c.Bind(&body); err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
 	if err := crypto.DeleteTokens(body.Uuid); err != nil {
 		log.Error(err)
-		utils.AbortWithStrJson(c, http.StatusInternalServerError, "Cannot delete user auth token")
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	log.Info("Kakao user logged out:", body.Uuid)
 	c.JSON(201, gin.H{})
+	log.Info("Kakao user logged out / [uuid]:", body.Uuid)
 }
 
 func UseAuthRouter(g *gin.Engine) {

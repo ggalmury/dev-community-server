@@ -16,7 +16,7 @@ func SaveTokens(uuid string, token string) error {
 		return err
 	}
 
-	log.Infof("Token saved in in-memory DB: [key]: %v", uuid)
+	log.Info("Token saved in in-memory DB / [uuid]:", uuid)
 	return nil
 }
 
@@ -25,7 +25,7 @@ func DeleteTokens(uuid string) error {
 		return err
 	}
 
-	log.Infof("Token deleted in in-memory DB: [key]: %v", uuid)
+	log.Info("Token deleted in in-memory DB / [uuid]:", uuid)
 	return nil
 }
 
@@ -69,6 +69,7 @@ func GenerateTokens(e *models.UserEntity) (*dto.TokenDto, error) {
 		RefreshToken: rtString,
 	}
 
+	log.Info("Auth token generated / [uuid]:", e.Uuid)
 	return &token, nil
 }
 
@@ -79,7 +80,7 @@ func ValidateAccessToken(at string) (*dto.AccessTokenClaims, error) {
 		return []byte(os.Getenv("JWT_ACCESS_SECRET")), nil
 	})
 	if err != nil {
-		return nil, err
+		return claim, err
 	}
 	return claim, nil
 }
@@ -91,7 +92,7 @@ func ValidateRefreshToken(rt string) (*dto.RefreshTokenClaims, error) {
 		return []byte(os.Getenv("JWT_REFRESH_SECRET")), nil
 	})
 	if err != nil {
-		return nil, err
+		return claim, err
 	}
 	return claim, nil
 }

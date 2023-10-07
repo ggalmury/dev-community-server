@@ -7,7 +7,7 @@ import (
 )
 
 type PartyArticleDto struct {
-	Poster      string         `json:"poster"`
+	Id          uint           `json:"id"`
 	Title       string         `json:"title"`
 	Description *string        `json:"description"`
 	TechSkill   []string       `json:"techSkill"`
@@ -35,7 +35,7 @@ func NewPartyArticleDto(entity models.PartyArticleEntity) (*PartyArticleDto, err
 	}
 
 	return &PartyArticleDto{
-		Poster:      entity.Poster,
+		Id:          entity.ID,
 		Title:       entity.Title,
 		Description: entity.Description,
 		TechSkill:   techSkill,
@@ -51,7 +51,6 @@ func NewPartyArticleDto(entity models.PartyArticleEntity) (*PartyArticleDto, err
 }
 
 type PartyArticleCreateDto struct {
-	Poster      string         `json:"poster"`
 	Category    string         `json:"category"`
 	Title       string         `json:"title"`
 	Description *string        `json:"description"`
