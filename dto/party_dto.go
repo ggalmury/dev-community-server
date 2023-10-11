@@ -1,12 +1,13 @@
 package dto
 
 import (
-	"dev_community_server/models"
+	"dev_community_server/entity"
+	"dev_community_server/model"
 	"encoding/json"
 	"time"
 )
 
-type PartyArticleDto struct {
+type PartyDto struct {
 	Id          uint           `json:"id"`
 	Title       string         `json:"title"`
 	Description *string        `json:"description"`
@@ -19,9 +20,10 @@ type PartyArticleDto struct {
 	Span        string         `json:"span"`
 	Location    *string        `json:"location"`
 	CreatedAt   time.Time      `json:"createdAt"`
+	Poster      model.Poster   `json:"poster"`
 }
 
-func NewPartyArticleDto(entity models.PartyArticleEntity) (*PartyArticleDto, error) {
+func NewPartyDto(entity entity.PartyEntity) (*PartyDto, error) {
 	var (
 		techSkill []string
 		position  map[string]int
@@ -34,7 +36,9 @@ func NewPartyArticleDto(entity models.PartyArticleEntity) (*PartyArticleDto, err
 		return nil, tsErr
 	}
 
-	return &PartyArticleDto{
+	poster := model.NewPoster(entity.Poster)
+
+	return &PartyDto{
 		Id:          entity.ID,
 		Title:       entity.Title,
 		Description: entity.Description,
@@ -47,10 +51,11 @@ func NewPartyArticleDto(entity models.PartyArticleEntity) (*PartyArticleDto, err
 		Span:        entity.Span,
 		Location:    entity.Location,
 		CreatedAt:   entity.CreatedAt,
+		Poster:      *poster,
 	}, nil
 }
 
-type PartyArticleCreateDto struct {
+type PartyCreateDto struct {
 	Category    string         `json:"category"`
 	Title       string         `json:"title"`
 	Description *string        `json:"description"`
@@ -61,4 +66,15 @@ type PartyArticleCreateDto struct {
 	Deadline    string         `json:"deadline"`
 	StartDate   string         `json:"startDate"`
 	Span        string         `json:"span"`
+}
+
+type PartyCommentDto struct {
+	Comments model.CommentGroup `json:"comments"`
+}
+
+type PartyCommentCreateDto struct {
+	PostId  uint   `json:"postId"`
+	Comment string `json:"comment"`
+	Depth   int    `json:"depth"`
+	Group   *uint  `json:"group"`
 }

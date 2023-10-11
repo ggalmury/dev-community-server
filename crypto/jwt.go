@@ -2,8 +2,8 @@ package crypto
 
 import (
 	"dev_community_server/dto"
+	"dev_community_server/entity"
 	"dev_community_server/initializers"
-	"dev_community_server/models"
 	"github.com/golang-jwt/jwt/v5"
 	log "github.com/shyunku-libraries/go-logger"
 	"os"
@@ -29,7 +29,7 @@ func DeleteTokens(uuid string) error {
 	return nil
 }
 
-func GenerateTokens(e *models.UserEntity) (*dto.TokenDto, error) {
+func GenerateTokens(e *entity.UserEntity) (*dto.TokenDto, error) {
 	atKey := os.Getenv("JWT_ACCESS_SECRET")
 	rtKey := os.Getenv("JWT_REFRESH_SECRET")
 	atExp, _ := strconv.Atoi(os.Getenv("JWT_ACCESS_EXP_DATE"))

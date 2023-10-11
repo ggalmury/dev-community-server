@@ -1,13 +1,13 @@
-package models
+package entity
 
 import (
 	"gorm.io/gorm"
 	"time"
 )
 
-type PartyArticleEntity struct {
+type PartyEntity struct {
 	gorm.Model
-	Poster      UserEntity `gorm:"foreignKey:PosterUuid;references:Uuid"`
+	Poster      UserEntity `gorm:"foreignKey:PosterUuid;references:uuid"`
 	PosterUuid  string     `gorm:"type:varchar(36)"`
 	Title       string     `gorm:"type:varchar(40)"`
 	Description *string    `gorm:"type:longText"`
@@ -21,14 +21,18 @@ type PartyArticleEntity struct {
 	Location    *string `gorm:"type:varchar(7)"`
 }
 
-func (PartyArticleEntity) TableName() string {
-	return "party_article"
+func (PartyEntity) TableName() string {
+	return "party"
 }
 
 type PartyCommentEntity struct {
 	gorm.Model
-	PostId  uint   `json:"post_id"`
-	Comment string `json:"comment"`
+	Poster     UserEntity `gorm:"foreignKey:PosterUuid;references:uuid"`
+	PosterUuid string     `gorm:"type:varchar(36)"`
+	PostId     uint
+	Comment    string `gorm:"type:varchar(255)"`
+	Group      *uint
+	Depth      int
 }
 
 func (PartyCommentEntity) TableName() string {

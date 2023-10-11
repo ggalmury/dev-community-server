@@ -3,8 +3,8 @@ package controllers
 import (
 	"dev_community_server/crypto"
 	"dev_community_server/dto"
+	"dev_community_server/entity"
 	"dev_community_server/initializers"
-	"dev_community_server/models"
 	"dev_community_server/utils"
 	"encoding/json"
 	"errors"
@@ -56,7 +56,7 @@ func KakaoLogin(c *gin.Context) {
 	}
 
 	var (
-		user      *models.UserEntity
+		user      *entity.UserEntity
 		userDto   *dto.UserDto
 		kakaoResp dto.KakaoResponse
 	)
@@ -78,7 +78,7 @@ func KakaoLogin(c *gin.Context) {
 	// Kakao user not exists in database
 	if err = tx.Where("kakao_id = ?", kakaoResp.ID).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			*user = models.UserEntity{
+			*user = entity.UserEntity{
 				Uuid:                 uuid.New().String(),
 				Email:                &kakaoResp.KakaoAccount.Email,
 				Password:             nil,
@@ -146,7 +146,7 @@ func AutoLogin(c *gin.Context) {
 		return
 	}
 
-	var user *models.UserEntity
+	var user *entity.UserEntity
 
 	atClaims, atErr := crypto.ValidateAccessToken(*accessToken)
 	rtClaims, rtErr := crypto.ValidateRefreshToken(refreshToken)

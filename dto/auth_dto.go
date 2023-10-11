@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"dev_community_server/models"
+	"dev_community_server/entity"
 	"github.com/golang-jwt/jwt/v5"
 	"time"
 )
@@ -29,7 +29,7 @@ type UserDto struct {
 	Token                TokenDto  `json:"token"`
 }
 
-func NewUserDto(entity models.UserEntity, token TokenDto) *UserDto {
+func NewUserDto(entity entity.UserEntity, token TokenDto) *UserDto {
 	return &UserDto{
 		Uuid:                 entity.Uuid,
 		Email:                entity.Email,

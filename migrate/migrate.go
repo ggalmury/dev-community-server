@@ -1,8 +1,8 @@
 package main
 
 import (
+	"dev_community_server/entity"
 	"dev_community_server/initializers"
-	"dev_community_server/models"
 )
 
 func init() {
@@ -11,5 +11,5 @@ func init() {
 }
 
 func main() {
-	initializers.DB.AutoMigrate(&models.PartyArticleEntity{}, &models.UserEntity{})
+	initializers.DB.AutoMigrate(&entity.PartyEntity{}, &entity.UserEntity{}, &entity.PartyCommentEntity{})
 }
