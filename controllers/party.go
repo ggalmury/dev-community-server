@@ -5,7 +5,6 @@ import (
 	"dev_community_server/entity"
 	"dev_community_server/initializers"
 	"dev_community_server/middlewares"
-	"dev_community_server/model"
 	"dev_community_server/utils"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
@@ -15,26 +14,22 @@ import (
 )
 
 func GetParty(c *gin.Context) {
-	var entities []entity.PartyEntity
+	var partyEntity []entity.PartyEntity
 
-	if err := initializers.DB.Preload("Poster").Find(&entities).Error; err != nil {
+	if err := initializers.DB.Preload("Poster").Find(&partyEntity).Error; err != nil {
+		log.Error(err)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	parties := make([]dto.PartyDto, len(entities))
-
-	for idx, e := range entities {
-		pad, err := dto.NewPartyDto(e)
-		if err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
-
-		parties[idx] = *pad
+	partyListDto, err := dto.PartyListDtoFromEntity(partyEntity)
+	if err != nil {
+		log.Error(err)
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
 	}
 
-	c.JSON(http.StatusOK, parties)
+	c.JSON(http.StatusOK, partyListDto)
 	log.Info("Article list successfully sent")
 }
 
@@ -65,7 +60,7 @@ func CreateParty(c *gin.Context) {
 		return
 	}
 
-	partyArticle := entity.PartyEntity{
+	partyEntity := entity.PartyEntity{
 		PosterUuid:  uuid.(string),
 		Title:       body.Title,
 		Description: body.Description,
@@ -79,7 +74,8 @@ func CreateParty(c *gin.Context) {
 		Location:    body.Location,
 	}
 
-	if err := initializers.DB.Create(&partyArticle).Error; err != nil {
+	if err := initializers.DB.Create(&partyEntity).Error; err != nil {
+		log.Error(err)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
@@ -89,7 +85,7 @@ func CreateParty(c *gin.Context) {
 }
 
 func GetPartyComment(c *gin.Context) {
-	var entities []entity.PartyCommentEntity
+	var partyCommentEntity []entity.PartyCommentEntity
 
 	query := c.DefaultQuery("postId", "")
 	postId, err := strconv.Atoi(query)
@@ -99,28 +95,23 @@ func GetPartyComment(c *gin.Context) {
 		return
 	}
 
-	if err = initializers.DB.Preload("Poster").Where("post_id = ?", postId).Find(&entities).Order("created_at").Error; err != nil {
+	if err = initializers.DB.Preload("Poster").Where("post_id = ?", postId).Order("created_at").Find(&partyCommentEntity).Error; err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	comments := make([]model.Comment, len(entities))
+	partyCommentListDto := dto.PartyCommentListDtoFromEntity(partyCommentEntity)
 
-	for idx, e := range entities {
-		nc := model.NewComment(e)
-		if err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
-
-		comments[idx] = *nc
-	}
-
-	c.JSON(http.StatusOK, comments)
+	c.JSON(http.StatusOK, partyCommentListDto)
+	log.Info("Party list responded to the client")
 }
 
 func CreatePartyComment(c *gin.Context) {
-	var body dto.PartyCommentCreateDto
+	var (
+		body               dto.PartyCommentCreateDto
+		partyCommentEntity entity.PartyCommentEntity
+	)
+
 	uuid, ok := c.Get("uuid")
 	if !ok {
 		c.AbortWithStatus(http.StatusBadRequest)
@@ -132,9 +123,11 @@ func CreatePartyComment(c *gin.Context) {
 		return
 	}
 
+	tx := initializers.DB.Begin()
+
 	// main comment
 	if body.Depth == 0 {
-		partyComment := entity.PartyCommentEntity{
+		partyCommentEntity = entity.PartyCommentEntity{
 			PosterUuid: uuid.(string),
 			PostId:     body.PostId,
 			Comment:    body.Comment,
@@ -142,29 +135,23 @@ func CreatePartyComment(c *gin.Context) {
 			Depth:      body.Depth,
 		}
 
-		tx := initializers.DB.Begin()
-
-		if err := tx.Create(&partyComment).Scan(&partyComment).Error; err != nil {
-			tx.Rollback()
+		if err := tx.Create(&partyCommentEntity).Error; err != nil {
 			log.Error(err)
+			tx.Rollback()
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 
-		partyComment.Group = &partyComment.ID
-		if err := tx.Save(&partyComment).Error; err != nil {
-			tx.Rollback()
+		partyCommentEntity.Group = &partyCommentEntity.ID
+		if err := tx.Save(&partyCommentEntity).Error; err != nil {
 			log.Error(err)
+			tx.Rollback()
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 
-		tx.Commit()
-
-		c.JSON(http.StatusCreated, gin.H{})
-		log.Info("Comment successfully created")
 	} else { // sub comment
-		partyComment := entity.PartyCommentEntity{
+		partyCommentEntity = entity.PartyCommentEntity{
 			PosterUuid: uuid.(string),
 			PostId:     body.PostId,
 			Comment:    body.Comment,
@@ -172,17 +159,27 @@ func CreatePartyComment(c *gin.Context) {
 			Depth:      body.Depth,
 		}
 
-		if err := initializers.DB.Create(&partyComment).Error; err != nil {
+		if err := tx.Create(&partyCommentEntity); err != nil {
 			log.Error(err)
+			tx.Rollback()
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-
-		c.JSON(http.StatusCreated, gin.H{})
-		log.Info("Sub comment successfully created")
-
 	}
 
+	if err := tx.Model(&partyCommentEntity).Preload("Poster").First(&partyCommentEntity).Error; err != nil {
+		log.Error(err)
+		tx.Rollback()
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
+	tx.Commit()
+
+	partyCommentDto := dto.PartyCommentDtoFromEntity(partyCommentEntity)
+
+	c.JSON(http.StatusCreated, partyCommentDto)
+	log.Info("Comment successfully created")
 }
 
 func UsePartyRouter(g *gin.Engine) {

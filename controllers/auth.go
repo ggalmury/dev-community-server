@@ -5,6 +5,7 @@ import (
 	"dev_community_server/dto"
 	"dev_community_server/entity"
 	"dev_community_server/initializers"
+	"dev_community_server/model"
 	"dev_community_server/utils"
 	"encoding/json"
 	"errors"
@@ -58,7 +59,7 @@ func KakaoLogin(c *gin.Context) {
 	var (
 		user      *entity.UserEntity
 		userDto   *dto.UserDto
-		kakaoResp dto.KakaoResponse
+		kakaoResp model.KakaoResponse
 	)
 
 	if err = json.Unmarshal(respBody, &kakaoResp); err != nil {
@@ -69,11 +70,6 @@ func KakaoLogin(c *gin.Context) {
 	props := kakaoResp.Properties
 
 	tx := initializers.DB.Begin()
-	if tx.Error != nil {
-		log.Error(tx.Error)
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
 
 	// Kakao user not exists in database
 	if err = tx.Where("kakao_id = ?", kakaoResp.ID).First(&user).Error; err != nil {
@@ -123,7 +119,7 @@ func KakaoLogin(c *gin.Context) {
 		return
 	}
 
-	userDto = dto.NewUserDto(*user, *tokenDto)
+	userDto = dto.UserDtoFromEntity(*user, *tokenDto)
 
 	if err = tx.Commit().Error; err != nil {
 		log.Error(err)
@@ -187,7 +183,7 @@ func AutoLogin(c *gin.Context) {
 		return
 	}
 
-	userDto := dto.NewUserDto(*user, *tokenDto)
+	userDto := dto.UserDtoFromEntity(*user, *tokenDto)
 
 	c.JSON(201, userDto)
 	log.Info("User auto logged in / [uuid]:", userDto.Uuid)
@@ -207,7 +203,7 @@ func Logout(c *gin.Context) {
 	}
 
 	c.JSON(201, gin.H{})
-	log.Info("Kakao user logged out / [uuid]:", body.Uuid)
+	log.Info("User logged out / [uuid]:", body.Uuid)
 }
 
 func UseAuthRouter(g *gin.Engine) {

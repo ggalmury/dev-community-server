@@ -3,56 +3,66 @@ package dto
 import (
 	"dev_community_server/entity"
 	"dev_community_server/model"
-	"encoding/json"
-	"time"
 )
 
-type PartyDto struct {
-	Id          uint           `json:"id"`
-	Title       string         `json:"title"`
-	Description *string        `json:"description"`
-	TechSkill   []string       `json:"techSkill"`
-	Position    map[string]int `json:"position"`
-	Process     string         `json:"process"`
-	Category    string         `json:"category"`
-	Deadline    time.Time      `json:"deadline"`
-	StartDate   time.Time      `json:"startDate"`
-	Span        string         `json:"span"`
-	Location    *string        `json:"location"`
-	CreatedAt   time.Time      `json:"createdAt"`
-	Poster      model.Poster   `json:"poster"`
+type PartyListDto struct {
+	Parties []model.Party `json:"parties"`
 }
 
-func NewPartyDto(entity entity.PartyEntity) (*PartyDto, error) {
-	var (
-		techSkill []string
-		position  map[string]int
-	)
+func PartyListDtoFromEntity(entity []entity.PartyEntity) (*PartyListDto, error) {
+	parties := make([]model.Party, len(entity))
 
-	tsErr := json.Unmarshal(entity.TechSkill, &techSkill)
-	posErr := json.Unmarshal(entity.Position, &position)
+	for idx, e := range entity {
+		p, err := model.PartyFromEntity(e)
+		if err != nil {
+			return nil, err
+		}
 
-	if tsErr != nil || posErr != nil {
-		return nil, tsErr
+		parties[idx] = *p
 	}
 
-	poster := model.NewPoster(entity.Poster)
+	return &PartyListDto{Parties: parties}, nil
+}
 
-	return &PartyDto{
-		Id:          entity.ID,
-		Title:       entity.Title,
-		Description: entity.Description,
-		TechSkill:   techSkill,
-		Position:    position,
-		Process:     entity.Process,
-		Category:    entity.Category,
-		Deadline:    entity.Deadline,
-		StartDate:   entity.StartDate,
-		Span:        entity.Span,
-		Location:    entity.Location,
-		CreatedAt:   entity.CreatedAt,
-		Poster:      *poster,
-	}, nil
+type PartyCommentDto struct {
+	Comment model.Comment `json:"comment"`
+}
+
+func PartyCommentDtoFromEntity(entity entity.PartyCommentEntity) *PartyCommentDto {
+	comment := model.CommentFromEntity(entity)
+
+	return &PartyCommentDto{Comment: *comment}
+}
+
+type PartyCommentListDto struct {
+	Comments []model.CommentGroup `json:"comments"`
+}
+
+func PartyCommentListDtoFromEntity(entity []entity.PartyCommentEntity) *PartyCommentListDto {
+	comments := make([]model.Comment, len(entity))
+
+	for idx, e := range entity {
+		c := model.CommentFromEntity(e)
+		comments[idx] = *c
+	}
+
+	var commentGroup []model.CommentGroup
+
+	for _, comment := range comments {
+		if comment.Depth == 0 {
+			cg := model.CommentGroup{Comment: comment}
+			cg.SubComment = make([]model.Comment, 0)
+
+			for _, subComment := range comments {
+				if subComment.Depth == 1 && *subComment.Group == *comment.Group {
+					cg.SubComment = append(cg.SubComment, subComment)
+				}
+			}
+			commentGroup = append(commentGroup, cg)
+		}
+	}
+
+	return &PartyCommentListDto{Comments: commentGroup}
 }
 
 type PartyCreateDto struct {
@@ -66,10 +76,6 @@ type PartyCreateDto struct {
 	Deadline    string         `json:"deadline"`
 	StartDate   string         `json:"startDate"`
 	Span        string         `json:"span"`
-}
-
-type PartyCommentDto struct {
-	Comments model.CommentGroup `json:"comments"`
 }
 
 type PartyCommentCreateDto struct {

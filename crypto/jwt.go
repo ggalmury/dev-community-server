@@ -1,9 +1,9 @@
 package crypto
 
 import (
-	"dev_community_server/dto"
 	"dev_community_server/entity"
 	"dev_community_server/initializers"
+	"dev_community_server/model"
 	"github.com/golang-jwt/jwt/v5"
 	log "github.com/shyunku-libraries/go-logger"
 	"os"
@@ -29,13 +29,13 @@ func DeleteTokens(uuid string) error {
 	return nil
 }
 
-func GenerateTokens(e *entity.UserEntity) (*dto.TokenDto, error) {
+func GenerateTokens(e *entity.UserEntity) (*model.Tokens, error) {
 	atKey := os.Getenv("JWT_ACCESS_SECRET")
 	rtKey := os.Getenv("JWT_REFRESH_SECRET")
 	atExp, _ := strconv.Atoi(os.Getenv("JWT_ACCESS_EXP_DATE"))
 	rtExp, _ := strconv.Atoi(os.Getenv("JWT_REFRESH_EXP_DATE"))
 
-	atClaims := dto.AccessTokenClaims{
+	atClaims := model.AccessTokenClaims{
 		Uuid:      e.Uuid,
 		CreatedAt: e.CreatedAt,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -49,7 +49,7 @@ func GenerateTokens(e *entity.UserEntity) (*dto.TokenDto, error) {
 		return nil, err
 	}
 
-	rtClaims := dto.RefreshTokenClaims{
+	rtClaims := model.RefreshTokenClaims{
 		Id:        e.ID,
 		Uuid:      e.Uuid,
 		CreatedAt: e.CreatedAt,
@@ -64,7 +64,7 @@ func GenerateTokens(e *entity.UserEntity) (*dto.TokenDto, error) {
 		return nil, err
 	}
 
-	token := dto.TokenDto{
+	token := model.Tokens{
 		AccessToken:  atString,
 		RefreshToken: rtString,
 	}
@@ -73,8 +73,8 @@ func GenerateTokens(e *entity.UserEntity) (*dto.TokenDto, error) {
 	return &token, nil
 }
 
-func ValidateAccessToken(at string) (*dto.AccessTokenClaims, error) {
-	claim := &dto.AccessTokenClaims{}
+func ValidateAccessToken(at string) (*model.AccessTokenClaims, error) {
+	claim := &model.AccessTokenClaims{}
 
 	_, err := jwt.ParseWithClaims(at, claim, func(token *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("JWT_ACCESS_SECRET")), nil
@@ -85,8 +85,8 @@ func ValidateAccessToken(at string) (*dto.AccessTokenClaims, error) {
 	return claim, nil
 }
 
-func ValidateRefreshToken(rt string) (*dto.RefreshTokenClaims, error) {
-	claim := &dto.RefreshTokenClaims{}
+func ValidateRefreshToken(rt string) (*model.RefreshTokenClaims, error) {
+	claim := &model.RefreshTokenClaims{}
 
 	_, err := jwt.ParseWithClaims(rt, claim, func(token *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("JWT_REFRESH_SECRET")), nil
