@@ -95,7 +95,8 @@ func GetPartyComment(c *gin.Context) {
 		return
 	}
 
-	if err = initializers.DB.Preload("Poster").Where("post_id = ?", postId).Order("created_at").Find(&partyCommentEntity).Error; err != nil {
+	if err = initializers.DB.Preload("Poster").Where("post_id = ?", postId).Order("created_at desc").Find(&partyCommentEntity).Error; err != nil {
+		log.Error(err)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
@@ -103,7 +104,7 @@ func GetPartyComment(c *gin.Context) {
 	partyCommentListDto := dto.PartyCommentListDtoFromEntity(partyCommentEntity)
 
 	c.JSON(http.StatusOK, partyCommentListDto)
-	log.Info("Party list responded to the client")
+	log.Info("Party comment list responded to the client")
 }
 
 func CreatePartyComment(c *gin.Context) {
@@ -189,5 +190,5 @@ func UsePartyRouter(g *gin.Engine) {
 	sg.GET("/articles", GetParty)
 	sg.POST("/create", CreateParty)
 	sg.GET("/comment", GetPartyComment)
-	sg.POST("comment-create", CreatePartyComment)
+	sg.POST("/comment-create", CreatePartyComment)
 }

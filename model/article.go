@@ -102,6 +102,6 @@ func CommentFromEntity(entity entity.PartyCommentEntity) *Comment {
 }
 
 type CommentGroup struct {
-	Comment    Comment   `json:"comment"`
-	SubComment []Comment `json:"subComment"`
+	Comment Comment   `json:"comment"`
+	Reply   []Comment `json:"reply"`
 }

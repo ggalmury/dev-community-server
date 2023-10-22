@@ -39,6 +39,10 @@ type PartyCommentListDto struct {
 }
 
 func PartyCommentListDtoFromEntity(entity []entity.PartyCommentEntity) *PartyCommentListDto {
+	if len(entity) == 0 {
+		return &PartyCommentListDto{Comments: []model.CommentGroup{}}
+	}
+
 	comments := make([]model.Comment, len(entity))
 
 	for idx, e := range entity {
@@ -51,11 +55,11 @@ func PartyCommentListDtoFromEntity(entity []entity.PartyCommentEntity) *PartyCom
 	for _, comment := range comments {
 		if comment.Depth == 0 {
 			cg := model.CommentGroup{Comment: comment}
-			cg.SubComment = make([]model.Comment, 0)
+			cg.Reply = make([]model.Comment, 0)
 
 			for _, subComment := range comments {
 				if subComment.Depth == 1 && *subComment.Group == *comment.Group {
-					cg.SubComment = append(cg.SubComment, subComment)
+					cg.Reply = append(cg.Reply, subComment)
 				}
 			}
 			commentGroup = append(commentGroup, cg)
